@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Le Chat Coquet — Calendrier</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #ede8e0; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 20px; }
+#app { background: #f5f0ea; border-radius: 14px; overflow: hidden; width: 100%; max-width: 900px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+
+/* HEADER */
+.cal-header { padding: 16px 22px 14px; display: flex; align-items: center; justify-content: space-between; position: relative; overflow: hidden; background: #1e1030; }
+.header-bg { position: absolute; inset: 0; pointer-events: none; }
+.cal-header-left { display: flex; align-items: center; gap: 14px; position: relative; z-index: 1; }
+.cal-title { color: #f0d080; font-size: 20px; font-weight: 500; letter-spacing: 0.02em; }
+.cal-subtitle { color: #c0a8d8; font-size: 12px; margin-top: 3px; }
+.cal-nav { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+.cal-nav button { background: rgba(201,168,76,0.18); border: 1px solid rgba(201,168,76,0.4); color: #f0d080; border-radius: 7px; width: 32px; height: 32px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.cal-nav button:hover { background: rgba(201,168,76,0.32); }
+.cal-month-label { color: #f0d080; font-size: 16px; font-weight: 500; min-width: 150px; text-align: center; }
+
+/* STATUS BAR */
+.status-bar { padding: 5px 16px; font-size: 11px; display: flex; align-items: center; gap: 6px; background: #ede8e0; border-bottom: 1px solid #d8d0c8; min-height: 26px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #aaa; flex-shrink: 0; }
+.status-dot.ok { background: #30a870; }
+.status-dot.err { background: #d03030; }
+.status-dot.loading { background: #c9a84c; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.status-text { color: #888; }
+
+/* BODY */
+.cal-body { padding: 12px 16px; background: #f5f0ea; }
+.weekdays { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-bottom: 5px; }
+.weekday { text-align: center; font-size: 11px; font-weight: 600; color: #888; padding: 4px 0; text-transform: uppercase; letter-spacing: 0.06em; }
+.weekday.we { color: #9060b0; }
+.days-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
+.day-cell { min-height: 80px; border: 1px solid #ddd8d0; border-radius: 7px; padding: 6px; background: #ffffff; }
+.day-cell.other { opacity: 0.35; background: #f0ece4; }
+.day-cell.today { border: 2px solid #c9a84c; background: #fffdf0; }
+.day-cell.today .dn { color: #c9a84c; font-weight: 600; }
+.day-cell.we .dn { color: #9060b0; }
+.dn { font-size: 12px; color: #666; margin-bottom: 4px; }
+.ep { font-size: 10px; padding: 2px 5px; border-radius: 0 3px 3px 0; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-weight: 500; border-left: 2.5px solid; }
+.ep.raid    { background: rgba(224,128,48,0.12); color: #b05010; border-color: #e08030; }
+.ep.social  { background: rgba(140,90,190,0.10); color: #6030a0; border-color: #9060c0; }
+.ep.economy { background: rgba(40,160,100,0.10); color: #187050; border-color: #30a870; }
+.ep.hl      { background: rgba(192,39,39,0.10); color: #a01818; border-color: #d03030; }
+.ep.other   { background: rgba(180,140,40,0.10); color: #806010; border-color: #c9a84c; }
+.more { font-size: 9px; color: #aaa; padding: 0 2px; }
+
+/* LEGEND */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 9px 16px 12px; align-items: center; background: #ede8e0; border-top: 1px solid #d8d0c8; }
+.li { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+.ld { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+.ld.raid{background:#e08030;} .ld.social{background:#9060c0;} .ld.economy{background:#30a870;} .ld.hl{background:#d03030;} .ld.other{background:#c9a84c;}
+.export-btn { margin-left: auto; background: #2a1845; border: 1px solid rgba(201,168,76,0.5); color: #f0d080; border-radius: 7px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 500; }
+.export-btn:hover { background: #3a2855; }
+
+/* MODAL */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(20,12,40,0.55); backdrop-filter: blur(2px); z-index: 100; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: #ffffff; border: 2px solid #c9a84c; border-radius: 14px; padding: 22px; width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.22); }
+.modal-ttl { font-size: 15px; font-weight: 600; color: #2a1845; margin-bottom: 4px; }
+.modal-date { font-size: 12px; color: #9060c0; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #ede8e0; }
+.modal label { font-size: 11px; color: #666; font-weight: 500; display: block; margin-bottom: 3px; margin-top: 12px; }
+.modal input, .modal select, .modal textarea { width: 100%; font-size: 13px; padding: 8px 11px; border: 1.5px solid #d8d0c8; border-radius: 7px; background: #faf8f4; color: #2a1845; font-family: inherit; transition: border-color 0.15s; }
+.modal input:focus, .modal select:focus, .modal textarea:focus { outline: none; border-color: #c9a84c; }
+.modal textarea { resize: vertical; min-height: 60px; }
+.mactions { display: flex; gap: 8px; margin-top: 18px; justify-content: flex-end; }
+.mactions button { font-size: 12px; padding: 8px 16px; border-radius: 7px; cursor: pointer; font-family: inherit; font-weight: 500; border: 1.5px solid #d8d0c8; background: #f5f0ea; color: #666; }
+.mactions button:hover { background: #ede8e0; }
+.btn-save { background: #2a1845 !important; border-color: #c9a84c !important; color: #f0d080 !important; }
+.btn-save:hover { background: #3a2855 !important; }
+.btn-del { color: #b02020 !important; border-color: rgba(176,32,32,0.35) !important; }
+.readonly-notice { font-size: 11px; color: #9060c0; background: rgba(144,96,192,0.08); border: 1px solid rgba(144,96,192,0.2); border-radius: 6px; padding: 8px 10px; margin-top: 10px; text-align: center; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="cal-header">
+    <div class="header-bg">
+      <svg width="100%" height="100%" viewBox="0 0 900 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e1030"/><stop offset="50%" stop-color="#2a1845"/><stop offset="100%" stop-color="#1a2818"/></linearGradient></defs>
+        <rect width="900" height="90" fill="url(#hg)"/>
+        <path d="M0,72 Q100,44 200,60 Q300,74 420,50 Q540,28 660,56 Q780,76 900,52" stroke="#3a5a28" stroke-width="1.4" fill="none" opacity="0.55"/>
+        <ellipse cx="120" cy="56" rx="9" ry="3.5" fill="#4a8030" opacity="0.6" transform="rotate(-28,120,56)"/>
+        <ellipse cx="320" cy="50" rx="8" ry="3" fill="#5a9038" opacity="0.6" transform="rotate(20,320,50)"/>
+        <ellipse cx="530" cy="55" rx="9" ry="3.5" fill="#4a8030" opacity="0.6" transform="rotate(-18,530,55)"/>
+        <ellipse cx="740" cy="50" rx="8" ry="3" fill="#5a9038" opacity="0.6" transform="rotate(22,740,50)"/>
+        <g transform="translate(780,22)"><circle cx="0" cy="-10" r="6" fill="#e060a0" opacity="0.88"/><circle cx="8.5" cy="-5" r="6" fill="#e060a0" opacity="0.88"/><circle cx="8.5" cy="5" r="6" fill="#e060a0" opacity="0.88"/><circle cx="0" cy="10" r="6" fill="#e060a0" opacity="0.88"/><circle cx="-8.5" cy="5" r="6" fill="#e060a0" opacity="0.88"/><circle cx="-8.5" cy="-5" r="6" fill="#e060a0" opacity="0.88"/><circle cx="0" cy="0" r="5" fill="#f8d060"/></g>
+        <g transform="translate(845,32)"><circle cx="0" cy="-8" r="5" fill="#b080e0" opacity="0.82"/><circle cx="7" cy="-4" r="5" fill="#b080e0" opacity="0.82"/><circle cx="7" cy="4" r="5" fill="#b080e0" opacity="0.82"/><circle cx="0" cy="8" r="5" fill="#b080e0" opacity="0.82"/><circle cx="-7" cy="4" r="5" fill="#b080e0" opacity="0.82"/><circle cx="-7" cy="-4" r="5" fill="#b080e0" opacity="0.82"/><circle cx="0" cy="0" r="4" fill="#f8e080"/></g>
+        <g transform="translate(888,15)"><circle cx="0" cy="-5" r="3.5" fill="#f0e8ff" opacity="0.78"/><circle cx="4.5" cy="-2.5" r="3.5" fill="#f0e8ff" opacity="0.78"/><circle cx="4.5" cy="2.5" r="3.5" fill="#f0e8ff" opacity="0.78"/><circle cx="0" cy="5" r="3.5" fill="#f0e8ff" opacity="0.78"/><circle cx="-4.5" cy="2.5" r="3.5" fill="#f0e8ff" opacity="0.78"/><circle cx="-4.5" cy="-2.5" r="3.5" fill="#f0e8ff" opacity="0.78"/><circle cx="0" cy="0" r="3" fill="#f8d060"/></g>
+        <ellipse cx="190" cy="34" rx="4" ry="6" fill="#f090c0" opacity="0.42" transform="rotate(20,190,34)"/>
+        <ellipse cx="430" cy="27" rx="3.5" ry="5" fill="#c090e0" opacity="0.38" transform="rotate(-14,430,27)"/>
+        <ellipse cx="660" cy="32" rx="4" ry="6" fill="#f0a0c0" opacity="0.42" transform="rotate(28,660,32)"/>
+        <circle cx="150" cy="18" r="1.5" fill="#f8f0a0" opacity="0.6"/>
+        <circle cx="470" cy="22" r="1.5" fill="#f8f0a0" opacity="0.55"/>
+        <circle cx="720" cy="14" r="1.2" fill="#f8f0a0" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="cal-header-left">
+      <svg width="56" height="56" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="26" cy="34" rx="18" ry="14" fill="#f5efe0"/><ellipse cx="26" cy="21" rx="13" ry="12" fill="#f5efe0"/>
+        <polygon points="14,12 11,4 18,10" fill="#222" opacity="0.7"/><polygon points="15,11 12,5 17,10" fill="#e8b8b0"/>
+        <polygon points="38,12 41,4 34,10" fill="#222" opacity="0.7"/><polygon points="37,11 40,5 35,10" fill="#e8b8b0"/>
+        <ellipse cx="21" cy="21" rx="2.2" ry="2.5" fill="#222"/><ellipse cx="31" cy="21" rx="2.2" ry="2.5" fill="#222"/>
+        <circle cx="21.8" cy="20.2" r="0.7" fill="white"/><circle cx="31.8" cy="20.2" r="0.7" fill="white"/>
+        <polygon points="26,24.5 24.5,26 27.5,26" fill="#e88090"/>
+        <path d="M24.5,26.5 Q26,28 27.5,26.5" stroke="#c06070" stroke-width="0.8" fill="none"/>
+        <line x1="13" y1="24" x2="22" y2="25" stroke="#aaa" stroke-width="0.6"/><line x1="13" y1="26" x2="22" y2="26.5" stroke="#aaa" stroke-width="0.6"/>
+        <line x1="30" y1="25" x2="39" y2="24" stroke="#aaa" stroke-width="0.6"/><line x1="30" y1="26.5" x2="39" y2="26" stroke="#aaa" stroke-width="0.6"/>
+        <path d="M44,36 Q52,30 48,42 Q44,48 40,44" stroke="#d4c090" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="26" cy="12" rx="15" ry="3.5" fill="#c8a030"/><ellipse cx="26" cy="8" rx="10" ry="6" fill="#d4b040"/>
+        <ellipse cx="26" cy="8" rx="10" ry="6" fill="none" stroke="#a02020" stroke-width="1.5"/>
+        <line x1="16" y1="8" x2="36" y2="8" stroke="#a02020" stroke-width="1"/><line x1="21" y1="3" x2="21" y2="13" stroke="#a02020" stroke-width="1"/><line x1="31" y1="3" x2="31" y2="13" stroke="#a02020" stroke-width="1"/>
+        <ellipse cx="26" cy="12" rx="10" ry="2.2" fill="#8b1a1a" opacity="0.6"/>
+        <path d="M33,5 Q38,0 42,3 Q38,6 35,9" fill="#c04010" opacity="0.85"/>
+        <ellipse cx="13" cy="44" rx="5" ry="3.5" fill="#f0e8d0"/><ellipse cx="39" cy="44" rx="5" ry="3.5" fill="#f0e8d0"/>
+        <ellipse cx="20" cy="47" rx="5.5" ry="3" fill="#f0e8d0"/><ellipse cx="32" cy="47" rx="5.5" ry="3" fill="#f0e8d0"/>
+      </svg>
+      <div>
+        <div class="cal-title">Le Chat Coquet</div>
+        <div class="cal-subtitle">Calendrier des événements · Cerberus</div>
+      </div>
+    </div>
+    <div class="cal-nav">
+      <button id="prev-btn" aria-label="Mois précédent">&#8249;</button>
+      <div class="cal-month-label" id="month-label"></div>
+      <button id="next-btn" aria-label="Mois suivant">&#8250;</button>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <div class="status-dot loading" id="status-dot"></div>
+    <span class="status-text" id="status-text">Chargement des événements…</span>
+  </div>
+
+  <!-- GRILLE -->
+  <div class="cal-body">
+    <div class="weekdays">
+      <div class="weekday">Lun</div><div class="weekday">Mar</div><div class="weekday">Mer</div>
+      <div class="weekday">Jeu</div><div class="weekday">Ven</div>
+      <div class="weekday we">Sam</div><div class="weekday we">Dim</div>
+    </div>
+    <div class="days-grid" id="days-grid"></div>
+  </div>
+
+  <!-- LÉGENDE -->
+  <div class="legend">
+    <div class="li"><div class="ld raid"></div>Raid</div>
+    <div class="li"><div class="ld social"></div>Social</div>
+    <div class="li"><div class="ld economy"></div>Craft/Éco</div>
+    <div class="li"><div class="ld hl"></div>HL</div>
+    <div class="li"><div class="ld other"></div>Autre</div>
+    <button class="export-btn" id="export-btn">⬇ Exporter PNG</button>
+  </div>
+
+  <!-- MODAL DÉTAIL (lecture seule pour les membres) -->
+  <div class="overlay" id="detail-modal">
+    <div class="modal">
+      <div class="modal-ttl"><span id="d-icon"></span> <span id="d-title"></span></div>
+      <div class="modal-date" id="d-date"></div>
+      <div style="font-size:13px;color:#444;line-height:1.6" id="d-note"></div>
+      <div class="readonly-notice">📋 Pour modifier les événements, rendez-vous dans le Google Sheet de la CL.</div>
+      <div class="mactions">
+        <button id="d-close">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  ⚙️  CONFIGURATION — à remplir une seule fois
+// ════════════════════════════════════════════════════════
+const SCRIPT_URL = https://script.google.com/macros/s/AKfycbykrUvvWCQRqCkS5hMuZnf1iiKzJXVnI4E2gAMarfje_DtGX7L8cpjM222un1ulJ9pBQQ/exec;
+// ════════════════════════════════════════════════════════
+
+const MF = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MS = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+const CI = {raid:'⚔️', social:'🎉', economy:'💰', hl:'🔴', other:'📌'};
+const CAT_COLORS = {raid:'#b05010', social:'#6030a0', economy:'#187050', hl:'#a01818', other:'#806010'};
+const CAT_BG     = {raid:'rgba(224,128,48,0.10)', social:'rgba(140,90,190,0.09)', economy:'rgba(40,160,100,0.09)', hl:'rgba(192,39,39,0.09)', other:'rgba(180,140,40,0.09)'};
+const CAT_BORDER = {raid:'#e08030', social:'#9060c0', economy:'#30a870', hl:'#d03030', other:'#c9a84c'};
+const CAT_LABELS = {raid:'Raid / Progression', social:'Social / Fun', economy:'Craft / Éco', hl:'HL', other:'Autre'};
+
+let cy, cm, events = {};
+
+function dk(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+function setStatus(state, text) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot ' + state;
+  document.getElementById('status-text').textContent = text;
+}
+
+async function loadEvents() {
+  if (!SCRIPT_URL || SCRIPT_URL === 'COLLER_ICI_L_URL_DU_GOOGLE_APPS_SCRIPT') {
+    setStatus('err', '⚠️ URL du script non configurée — voir le guide de mise en place');
+    return;
+  }
+  setStatus('loading', 'Chargement des événements…');
+  try {
+    const r = await fetch(SCRIPT_URL);
+    const data = await r.json();
+    events = {};
+    (data.events || []).forEach(ev => {
+      if (!events[ev.date]) events[ev.date] = [];
+      events[ev.date].push(ev);
+    });
+    setStatus('ok', `Synchronisé · ${(data.events||[]).length} événement(s) chargé(s)`);
+  } catch(e) {
+    setStatus('err', 'Erreur de connexion au Google Sheet — vérifiez l\'URL du script');
+  }
+  render();
+}
+
+function render() {
+  document.getElementById('month-label').textContent = `${MF[cm]} ${cy}`;
+  const grid = document.getElementById('days-grid'); grid.innerHTML = '';
+  const fd = new Date(cy, cm, 1).getDay(); const off = fd === 0 ? 6 : fd - 1;
+  const dim = new Date(cy, cm+1, 0).getDate(); const dip = new Date(cy, cm, 0).getDate();
+  const today = new Date(); const total = Math.ceil((off + dim) / 7) * 7;
+  for (let i = 0; i < total; i++) {
+    let d, mo, yr, other = false;
+    if (i < off) { d = dip - off + 1 + i; mo = cm - 1; yr = cy; if (mo < 0) { mo = 11; yr--; } other = true; }
+    else if (i >= off + dim) { d = i - off - dim + 1; mo = cm + 1; yr = cy; if (mo > 11) { mo = 0; yr++; } other = true; }
+    else { d = i - off + 1; mo = cm; yr = cy; }
+    const isToday = d === today.getDate() && mo === today.getMonth() && yr === today.getFullYear();
+    const we = i % 7 >= 5; const key = dk(yr, mo, d); const evs = events[key] || [];
+    const cell = document.createElement('div');
+    cell.className = 'day-cell' + (other ? ' other' : '') + (isToday ? ' today' : '') + (we ? ' we' : '');
+    let h = `<div class="dn">${d}</div>`;
+    evs.slice(0, 2).forEach((ev, idx) => {
+      const t = ev.time ? `${ev.time} ` : '';
+      h += `<div class="ep ${ev.cat}" data-key="${key}" data-idx="${idx}">${t}${ev.title}</div>`;
+    });
+    if (evs.length > 2) h += `<div class="more">+${evs.length - 2}</div>`;
+    cell.innerHTML = h;
+    cell.addEventListener('click', e => {
+      const p = e.target.closest('.ep');
+      if (p && !other) openDetail(p.dataset.key, parseInt(p.dataset.idx));
+    });
+    grid.appendChild(cell);
+  }
+}
+
+function openDetail(key, idx) {
+  const ev = (events[key] || [])[idx]; if (!ev) return;
+  document.getElementById('d-icon').textContent = CI[ev.cat] || '📌';
+  document.getElementById('d-title').textContent = ev.title;
+  const [y, m, d] = key.split('-');
+  let ds = `${parseInt(d)} ${MS[parseInt(m)-1]} ${y}`; if (ev.time) ds += ` à ${ev.time}`;
+  document.getElementById('d-date').textContent = ds;
+  document.getElementById('d-note').textContent = ev.note || '';
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+document.getElementById('prev-btn').onclick = () => { cm--; if (cm < 0) { cm = 11; cy--; } render(); };
+document.getElementById('next-btn').onclick = () => { cm++; if (cm > 11) { cm = 0; cy++; } render(); };
+document.getElementById('d-close').onclick = () => document.getElementById('detail-modal').classList.remove('open');
+document.getElementById('detail-modal').onclick = e => { if (e.target === document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('open'); };
+
+// EXPORT
+document.getElementById('export-btn').onclick = () => {
+  const fd = new Date(cy, cm, 1).getDay(); const off = fd === 0 ? 6 : fd - 1;
+  const dim = new Date(cy, cm+1, 0).getDate(); const dip = new Date(cy, cm, 0).getDate();
+  const total = Math.ceil((off + dim) / 7) * 7; const today = new Date();
+  const catSVG = `<svg width="64" height="64" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg"><ellipse cx="26" cy="34" rx="18" ry="14" fill="#f5efe0"/><ellipse cx="26" cy="21" rx="13" ry="12" fill="#f5efe0"/><polygon points="14,12 11,4 18,10" fill="#222" opacity="0.7"/><polygon points="15,11 12,5 17,10" fill="#e8b8b0"/><polygon points="38,12 41,4 34,10" fill="#222" opacity="0.7"/><polygon points="37,11 40,5 35,10" fill="#e8b8b0"/><ellipse cx="21" cy="21" rx="2.2" ry="2.5" fill="#222"/><ellipse cx="31" cy="21" rx="2.2" ry="2.5" fill="#222"/><circle cx="21.8" cy="20.2" r="0.7" fill="white"/><circle cx="31.8" cy="20.2" r="0.7" fill="white"/><polygon points="26,24.5 24.5,26 27.5,26" fill="#e88090"/><path d="M24.5,26.5 Q26,28 27.5,26.5" stroke="#c06070" stroke-width="0.8" fill="none"/><line x1="13" y1="24" x2="22" y2="25" stroke="#aaa" stroke-width="0.6"/><line x1="13" y1="26" x2="22" y2="26.5" stroke="#aaa" stroke-width="0.6"/><line x1="30" y1="25" x2="39" y2="24" stroke="#aaa" stroke-width="0.6"/><line x1="30" y1="26.5" x2="39" y2="26" stroke="#aaa" stroke-width="0.6"/><path d="M44,36 Q52,30 48,42 Q44,48 40,44" stroke="#d4c090" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="26" cy="12" rx="15" ry="3.5" fill="#c8a030"/><ellipse cx="26" cy="8" rx="10" ry="6" fill="#d4b040"/><ellipse cx="26" cy="8" rx="10" ry="6" fill="none" stroke="#a02020" stroke-width="1.5"/><line x1="16" y1="8" x2="36" y2="8" stroke="#a02020" stroke-width="1"/><line x1="21" y1="3" x2="21" y2="13" stroke="#a02020" stroke-width="1"/><line x1="31" y1="3" x2="31" y2="13" stroke="#a02020" stroke-width="1"/><ellipse cx="26" cy="12" rx="10" ry="2.2" fill="#8b1a1a" opacity="0.6"/><path d="M33,5 Q38,0 42,3 Q38,6 35,9" fill="#c04010" opacity="0.85"/><ellipse cx="13" cy="44" rx="5" ry="3.5" fill="#f0e8d0"/><ellipse cx="39" cy="44" rx="5" ry="3.5" fill="#f0e8d0"/><ellipse cx="20" cy="47" rx="5.5" ry="3" fill="#f0e8d0"/><ellipse cx="32" cy="47" rx="5.5" ry="3" fill="#f0e8d0"/></svg>`;
+  let cellsHTML = '';
+  for (let i = 0; i < total; i++) {
+    let d, mo, yr, other = false;
+    if (i < off) { d = dip-off+1+i; mo = cm-1; yr = cy; if (mo<0){mo=11;yr--;} other=true; }
+    else if (i >= off+dim) { d = i-off-dim+1; mo = cm+1; yr = cy; if (mo>11){mo=0;yr++;} other=true; }
+    else { d = i-off+1; mo = cm; yr = cy; }
+    const isToday = d===today.getDate()&&mo===today.getMonth()&&yr===today.getFullYear();
+    const we = i%7>=5; const key = dk(yr,mo,d); const evs = other ? [] : (events[key]||[]);
+    let evHTML = '';
+    evs.slice(0,2).forEach(ev => {
+      const col = CAT_COLORS[ev.cat]||'#555'; const bg = CAT_BG[ev.cat]||'rgba(0,0,0,0.05)'; const bdr = CAT_BORDER[ev.cat]||'#999';
+      const ts = ev.time ? `<span style="color:#999;font-size:9px">${ev.time}</span> ` : '';
+      const nH = ev.note ? `<div style="font-size:9px;color:#777;margin-top:3px;line-height:1.4;word-break:break-word">${ev.note}</div>` : '';
+      evHTML += `<div style="background:${bg};border-left:2.5px solid ${bdr};border-radius:0 4px 4px 0;padding:4px 6px;margin-bottom:4px"><div style="font-size:10.5px;color:${col};font-weight:600;line-height:1.35;word-break:break-word">${ts}${ev.title}</div>${nH}</div>`;
+    });
+    const border = isToday?'2px solid #c9a84c':'1px solid #ddd8d0';
+    const bg = isToday?'#fffdf0':other?'#f5f2ee':'#ffffff';
+    const dnCol = other?'#bbb':isToday?'#c9a84c':we?'#9060b0':'#666';
+    cellsHTML += `<div style="${other?'opacity:0.38;':''}border:${border};border-radius:7px;padding:7px;background:${bg};min-height:90px"><div style="font-size:12px;font-weight:${isToday?'700':'500'};color:${dnCol};margin-bottom:6px">${d}</div>${evHTML}</div>`;
+  }
+  const legendHTML = Object.entries(CAT_LABELS).map(([cat,label])=>`<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#555"><div style="width:9px;height:9px;border-radius:2px;background:${CAT_BORDER[cat]};flex-shrink:0"></div>${label}</div>`).join('');
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/><title>Le Chat Coquet — ${MF[cm]} ${cy}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,sans-serif;background:#ede8e0;padding:20px}.page{width:1100px;margin:0 auto;background:white;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12)}@media print{body{background:white;padding:0}.page{width:100%;border-radius:0;box-shadow:none}}</style></head><body><div class="page"><div style="background:linear-gradient(135deg,#1e1030 0%,#2a1845 55%,#1a2818 100%);padding:18px 26px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden"><svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 1100 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><path d="M0,75 Q120,42 240,60 Q360,74 480,50 Q600,28 720,55 Q840,76 960,52 Q1040,36 1100,50" stroke="#3a5a28" stroke-width="1.5" fill="none" opacity="0.5"/><ellipse cx="100" cy="55" rx="9" ry="3.5" fill="#4a8030" opacity="0.6" transform="rotate(-25,100,55)"/><ellipse cx="300" cy="50" rx="8" ry="3" fill="#5a9038" opacity="0.55" transform="rotate(20,300,50)"/><ellipse cx="520" cy="54" rx="9" ry="3.5" fill="#4a8030" opacity="0.6" transform="rotate(-18,520,54)"/><ellipse cx="750" cy="50" rx="8" ry="3" fill="#5a9038" opacity="0.55" transform="rotate(22,750,50)"/><ellipse cx="950" cy="55" rx="9" ry="3.5" fill="#4a8030" opacity="0.6" transform="rotate(-20,950,55)"/><g transform="translate(980,22)"><circle cx="0" cy="-10" r="6" fill="#e060a0" opacity="0.85"/><circle cx="8.5" cy="-5" r="6" fill="#e060a0" opacity="0.85"/><circle cx="8.5" cy="5" r="6" fill="#e060a0" opacity="0.85"/><circle cx="0" cy="10" r="6" fill="#e060a0" opacity="0.85"/><circle cx="-8.5" cy="5" r="6" fill="#e060a0" opacity="0.85"/><circle cx="-8.5" cy="-5" r="6" fill="#e060a0" opacity="0.85"/><circle cx="0" cy="0" r="5" fill="#f8d060"/></g><g transform="translate(1042,32)"><circle cx="0" cy="-8" r="5" fill="#b080e0" opacity="0.8"/><circle cx="7" cy="-4" r="5" fill="#b080e0" opacity="0.8"/><circle cx="7" cy="4" r="5" fill="#b080e0" opacity="0.8"/><circle cx="0" cy="8" r="5" fill="#b080e0" opacity="0.8"/><circle cx="-7" cy="4" r="5" fill="#b080e0" opacity="0.8"/><circle cx="-7" cy="-4" r="5" fill="#b080e0" opacity="0.8"/><circle cx="0" cy="0" r="4" fill="#f8e080"/></g><g transform="translate(1085,16)"><circle cx="0" cy="-5" r="3.5" fill="#f0e8ff" opacity="0.75"/><circle cx="4.5" cy="-2.5" r="3.5" fill="#f0e8ff" opacity="0.75"/><circle cx="4.5" cy="2.5" r="3.5" fill="#f0e8ff" opacity="0.75"/><circle cx="0" cy="5" r="3.5" fill="#f0e8ff" opacity="0.75"/><circle cx="-4.5" cy="2.5" r="3.5" fill="#f0e8ff" opacity="0.75"/><circle cx="-4.5" cy="-2.5" r="3.5" fill="#f0e8ff" opacity="0.75"/><circle cx="0" cy="0" r="3" fill="#f8d060"/></g></svg><div style="display:flex;align-items:center;gap:16px;position:relative;z-index:1">${catSVG}<div><div style="color:#f0d080;font-size:24px;font-weight:500">Le Chat Coquet</div><div style="color:#c0a8d8;font-size:13px;margin-top:3px">Calendrier des événements · Cerberus</div></div></div><div style="color:#f0d080;font-size:22px;font-weight:500;position:relative;z-index:1">${MF[cm]} ${cy}</div></div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:14px 16px 6px;background:#f5f0ea">${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map((d,i)=>`<div style="text-align:center;font-size:11px;font-weight:700;color:${i>=5?'#9060b0':'#888'};text-transform:uppercase;letter-spacing:0.07em">${d}</div>`).join('')}</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:0 16px 16px;background:#f5f0ea">${cellsHTML}</div><div style="display:flex;gap:18px;padding:10px 18px 14px;background:#ede8e0;border-top:1px solid #d8d0c8;flex-wrap:wrap;align-items:center">${legendHTML}</div></div><script>window.onload=()=>window.print();<\/script></body></html>`;
+  const blob = new Blob([html], {type:'text/html'});
+  window.open(URL.createObjectURL(blob), '_blank');
+};
+
+// INIT
+const now = new Date(); cy = now.getFullYear(); cm = now.getMonth();
+render();
+loadEvents();
+</script>
+</body>
+</html>
