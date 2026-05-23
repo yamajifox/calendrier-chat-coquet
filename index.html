@@ -200,22 +200,28 @@ function setStatus(state, text) {
 
 async function loadEvents() {
   if (!SCRIPT_URL || SCRIPT_URL === 'COLLER_ICI_L_URL_DU_GOOGLE_APPS_SCRIPT') {
-    setStatus('err', '⚠️ URL du script non configurée — voir le guide de mise en place');
+    setStatus('err', 'URL du script non configurée');
     return;
   }
   setStatus('loading', 'Chargement des événements…');
   try {
-    const r = await fetch(SCRIPT_URL);
-    const data = await r.json();
-    events = {};
-    (data.events || []).forEach(ev => {
-      if (!events[ev.date]) events[ev.date] = [];
-      events[ev.date].push(ev);
-    });
-    setStatus('ok', `Synchronisé · ${(data.events||[]).length} événement(s) chargé(s)`);
+    const url = SCRIPT_URL + '?callback=handleEvents';
+    const script = document.createElement('script');
+    script.src = url;
+    script.onerror = () => setStatus('err', 'Erreur de connexion');
+    document.head.appendChild(script);
   } catch(e) {
-    setStatus('err', 'Erreur de connexion au Google Sheet — vérifiez l\'URL du script');
+    setStatus('err', 'Erreur : ' + e.message);
   }
+}
+
+function handleEvents(data) {
+  events = {};
+  (data.events || []).forEach(ev => {
+    if (!events[ev.date]) events[ev.date] = [];
+    events[ev.date].push(ev);
+  });
+  setStatus('ok', `Synchronisé · ${(data.events||[]).length} événement(s) chargé(s)`);
   render();
 }
 
